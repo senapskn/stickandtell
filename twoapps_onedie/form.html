@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stick &amp; Tell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Self-guided probe: one screen at a time, participant picks a feeling symbol, optional question + optional laddering, notes stick to the screen on a corkboard. */
+  --surface:#FFFFFF;
+  --ink:#2E1A22;
+  --muted:#6E5560;
+  --line:#E8D5DA;
+  --accent:#9E2A4B;
+  --accent-dark:#7E1F3B;
+  --font-display:"Fraunces", Georgia, serif;
+  --font-body:"Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --pos:#2F7D5B; --neg:#A23B55; --idea:#5B4BB0; --neu:#7A7F8A;
+  --c:#8A90A0;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html{min-height:100%;background:radial-gradient(rgba(158,42,75,.09) 1.2px,transparent 1.5px) 0 0/26px 26px,linear-gradient(180deg,#FBF3F4 0%,#F3DFE4 100%) #F3DFE4}
+html,body{margin:0}
+body{min-height:100vh;color:var(--ink);font-family:var(--font-body);font-size:18px;line-height:1.5}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 28px;background:var(--accent);color:#fff;flex-wrap:wrap}
+.brand{font-family:var(--font-display);font-weight:600;font-size:22px}
+.crumbs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.crumb{padding:4px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.45);white-space:nowrap;color:rgba(255,255,255,.85)}
+.crumb.on{background:#fff;color:var(--accent);border-color:#fff;font-weight:700}
+.crumb.done{color:#fff}
+.crumb.done::before{content:"✓ "}
+
+.view{display:none;flex-direction:column;align-items:center;padding:32px 22px 80px;gap:22px;max-width:1220px;margin:0 auto}
+.view.on{display:flex}
+h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:44px;text-align:center;line-height:1.1}
+h2{font-size:30px;display:flex;align-items:center;gap:12px}
+h3{font-size:24px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--c);flex:none}
+.lead{color:var(--muted);max-width:62ch;text-align:center;margin:0;font-size:19px}
+.small{margin:0;font-weight:600}
+.hint{margin:0;color:var(--muted);font-size:16px;min-height:1.4em}
+.primary{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:15px 26px;font-weight:600;cursor:pointer;font-size:18px;display:inline-flex;align-items:center;gap:10px;transition:background .15s}
+.primary:not(:disabled):hover{background:var(--accent-dark)}
+.secondary{background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:13px 22px;font-weight:600;cursor:pointer;font-size:17px}
+.secondary:not(:disabled):hover{border-color:var(--accent)}
+.primary:disabled,.secondary:disabled{opacity:.4;cursor:default}
+.ghost{background:none;border:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px 10px;font-size:16px}
+.actions{display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
+
+/* sticky notes */
+.postit{--pc:#FFE27A;--r:-1.5deg;position:relative;background:var(--pc);padding:26px 22px 20px;border-radius:3px 3px 3px 26px/3px 3px 3px 10px;box-shadow:0 1px 1px rgba(0,0,0,.06),0 16px 22px -12px rgba(70,30,20,.5);transform:rotate(var(--r));transition:transform .25s}
+.postit::before{content:"";position:absolute;top:-13px;left:50%;width:96px;height:26px;margin-left:-48px;background:rgba(255,255,255,.62);box-shadow:0 1px 2px rgba(0,0,0,.08);transform:rotate(-3deg)}
+.postit:focus-within{transform:rotate(0deg) scale(1.015)}
+.postit label{display:block;font-weight:700;font-size:18px;line-height:1.35;margin-bottom:10px;color:var(--ink)}
+.hand{display:block;width:100%;border:1.5px solid rgba(46,26,34,.14);border-radius:8px;background:rgba(255,255,255,.6);font-family:var(--font-body);font-size:19px;line-height:1.5;color:var(--ink);resize:vertical;min-height:110px;padding:10px 14px;outline:none}
+.hand:focus{border-color:var(--accent);background:rgba(255,255,255,.85)}
+.hand::placeholder{color:rgba(46,26,34,.45)}
+input.hand{min-height:0;height:auto}
+.youwrote{margin:0 0 10px;font-size:15px;color:rgba(46,26,34,.7);font-style:italic}
+
+/* start */
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;width:100%;max-width:900px}
+.leg{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.leg svg{width:34px;height:34px;flex:none}
+.leg b{display:block;font-size:17px}
+.leg span{font-size:15px;color:var(--muted)}
+.namenote{width:380px;max-width:100%;--r:-2.5deg}
+.order{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.order button{min-width:240px;text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:20px 22px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:border-color .15s,box-shadow .15s,transform .15s}
+.order button:hover{border-color:var(--accent);box-shadow:0 8px 20px -12px rgba(70,20,40,.4);transform:translateY(-2px) rotate(-.6deg)}
+.order button strong{font-family:var(--font-display);font-size:22px;font-weight:600}
+.order button span{color:var(--muted);font-size:16px}
+.reassure{background:#fff;border:1px dashed var(--accent);border-radius:14px;padding:12px 18px;max-width:640px;text-align:center;font-size:17px;margin:0}
+
+/* screen step */
+.tourhead{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.count{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.screenwrap{width:100%;display:flex;gap:40px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.phonecol{position:sticky;top:84px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.phonebox{display:flex;align-items:center;gap:12px}
+.bigphone{height:min(calc(100vh - 200px),760px);min-height:440px;aspect-ratio:9/19.5;background:#1E1418;border-radius:40px;padding:10px;box-shadow:0 14px 40px rgba(46,26,34,.22);flex:none}
+.bigphone img{width:100%;height:100%;object-fit:contain;border-radius:31px;background:#fff;display:block}
+.bigphone{transition:box-shadow .15s}
+.screenbox{position:relative;width:100%;height:100%}
+.stickers{position:absolute;inset:0;pointer-events:none}
+.sticker{position:absolute;width:66px;height:66px;margin:-33px 0 0 -33px;border-radius:50%;background:var(--pc);border:4px solid #fff;box-shadow:0 8px 16px -4px rgba(0,0,0,.45);display:grid;place-items:center;color:var(--fc);transform:rotate(-10deg);animation:pop .45s cubic-bezier(.2,.9,.3,1.4)}
+.sticker svg{width:40px;height:40px}
+@keyframes pop{from{transform:scale(.2) rotate(-40deg);opacity:0}}
+.dropzone{position:absolute;inset:0;border-radius:31px;display:none;align-items:center;justify-content:center;background:rgba(158,42,75,.18);border:4px dashed var(--accent);color:#fff;font-weight:700;font-size:22px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.bigphone.dragging .dropzone{display:flex}
+.bigphone.over{box-shadow:0 0 0 6px var(--accent),0 14px 40px rgba(46,26,34,.3)}
+.bigphone.over .dropzone{background:rgba(158,42,75,.35)}
+.draghint{margin:-12px 0 0;color:var(--muted);font-size:16px}
+.chosen{display:flex;align-items:center;gap:14px;background:#fff;border:1.5px solid var(--line);border-left:6px solid var(--fc);border-radius:14px;padding:10px 14px;animation:slidein .35s ease-out}
+.chosen .emo{font-size:34px}
+.chosen div{flex:1;line-height:1.3}
+.chosen b{display:block;font-size:17px}
+.chosen small{color:var(--muted);font-size:15px}
+.chosen button{padding:9px 16px;font-size:15px}
+.work .postit:first-child{animation:slidein .4s ease-out}
+@keyframes slidein{from{opacity:0;transform:translateY(-10px)}}
+.dragghost{position:fixed;z-index:60;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;background:var(--pc);border:4px solid #fff;box-shadow:0 14px 24px -6px rgba(0,0,0,.5);display:grid;place-items:center;color:var(--fc);pointer-events:none;transform:rotate(-12deg) scale(1.05)}
+.dragghost svg{width:44px;height:44px}
+.shotwrap .sticker{width:34px;height:34px;margin:-17px 0 0 -17px;border-width:2px;animation:none}
+.shotwrap .sticker svg{width:20px;height:20px}
+.feel{touch-action:none;user-select:none;-webkit-user-select:none}
+.arrow{width:50px;height:50px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;flex:none}
+.arrow:not(:disabled):hover{border-color:var(--accent)}
+.arrow:disabled{opacity:.3;cursor:default}
+.pips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}
+.pips button{width:14px;height:14px;border-radius:50%;background:rgba(46,26,34,.2);border:0;padding:0;cursor:pointer}
+.pips button.on{background:var(--c)}
+.pips button.cur{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ink)}
+.panel{width:560px;max-width:100%;display:flex;flex-direction:column;gap:22px;padding-top:6px}
+.panel h3{font-size:26px}
+.feelings{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.feel{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border:2px solid #3A2230;border-radius:18px;padding:12px 6px 10px;cursor:pointer;box-shadow:inset 0 -5px 0 rgba(46,26,34,.06);transition:transform .15s,box-shadow .15s,background .15s}
+.feel svg{width:44px;height:44px}
+.feel b{font-size:15px;letter-spacing:.04em;text-transform:uppercase}
+.feel span{font-size:13px;color:var(--muted);line-height:1.2;text-align:center}
+.feel:hover{transform:translateY(-3px) rotate(-2deg);cursor:grab}
+.feel.lifting{opacity:.45}
+.feel[aria-pressed="true"]{background:var(--fpc);border-color:var(--fc);box-shadow:0 0 0 3px var(--fc),0 10px 18px -8px rgba(46,26,34,.35);transform:rotate(-3deg) scale(1.04)}
+.feel[aria-pressed="true"]::after{content:"✓";position:absolute;top:-10px;right:-10px;width:26px;height:26px;border-radius:50%;background:var(--fc);color:#fff;display:grid;place-items:center;font-size:14px;font-weight:700}
+.work{display:flex;flex-direction:column;gap:26px}
+.work:empty{display:none}
+.deeper{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rungs{display:flex;gap:6px}
+.rungs i{display:block;width:30px;height:6px;border-radius:3px;background:var(--line)}
+.rungs i.on{background:var(--accent)}
+.navrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+
+/* wild card die */
+.dieblock{position:relative;display:flex;flex-direction:column;align-items:center;gap:16px;padding-top:6px}
+.scene{--s:170px;width:var(--s);height:var(--s);perspective:900px;border:0;background:none;padding:0;cursor:pointer;border-radius:24px}
+.scene:disabled{cursor:default}
+.scene.ready{animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(-3deg)}}
+.cube{pointer-events:none;position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1.15s cubic-bezier(.2,.7,.15,1)}
+.face{position:absolute;inset:0;background:#fff;border:2px solid #3A2230;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;backface-visibility:hidden;box-shadow:inset 0 -8px 0 rgba(46,26,34,.05)}
+.face svg{width:76px;height:76px}
+.face span{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.f-front{transform:rotateY(0deg) translateZ(calc(var(--s)/2))}
+.f-back{transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
+.f-right{transform:rotateY(90deg) translateZ(calc(var(--s)/2))}
+.f-left{transform:rotateY(-90deg) translateZ(calc(var(--s)/2))}
+.f-top{transform:rotateX(90deg) translateZ(calc(var(--s)/2))}
+.f-bottom{transform:rotateX(-90deg) translateZ(calc(var(--s)/2))}
+.rollbtn{position:relative;z-index:3;margin-top:10px}
+.wildcard{width:100%;max-width:640px;display:flex;flex-direction:column;gap:24px;align-items:stretch}
+.wildcard:empty{display:none}
+.wildq{--r:-1.5deg}
+.wildq .kind{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(46,26,34,.7);margin-bottom:6px}
+.wildq .kind svg{width:20px;height:20px}
+.wildlist{display:flex;flex-wrap:wrap;gap:26px 18px;justify-content:center;max-width:1000px}
+.wildlist:empty{display:none}
+.navbar{width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+
+.emo{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;font-style:normal;line-height:1;display:inline-block}
+.leg .emo{font-size:30px}
+.feel .emo{font-size:40px;transition:transform .15s}
+.feel:hover .emo{transform:scale(1.12) rotate(-6deg)}
+.face .emo{font-size:72px}
+.sticker .emo{font-size:36px}
+.dragghost .emo{font-size:42px}
+.shotwrap .sticker .emo{font-size:18px}
+.mini .mh .emo{font-size:16px}
+.wildq .kind .emo{font-size:20px}
+@media (max-width:700px){.face .emo{font-size:58px}}
+/* corkboard */
+.boardtitle{margin-top:24px}
+.boardhint{margin:-10px 0 0;color:var(--muted);font-size:16px;text-align:center}
+.board{width:100%;max-width:1160px;background:#C99E6E radial-gradient(rgba(90,55,20,.22) 1px,transparent 1.6px) 0 0/9px 9px;border:14px solid #7A4E2C;border-radius:12px;box-shadow:inset 0 3px 12px rgba(0,0,0,.3),0 14px 28px -14px rgba(60,35,10,.65);padding:40px 24px 34px;display:flex;flex-wrap:wrap;gap:40px 28px;justify-content:center;align-items:flex-start;min-height:160px}
+.pinshot{position:relative;width:150px;display:flex;flex-direction:column;align-items:center;transform:rotate(var(--r,0deg));background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.pinshot.static{cursor:default}
+.pinshot.cur .shotwrap img{border-color:#FFD23F}
+.shotwrap{position:relative;display:block}
+.shotwrap img{display:block;width:150px;aspect-ratio:9/19.5;object-fit:cover;object-position:top;border-radius:8px;border:6px solid #fff;box-shadow:0 10px 16px -6px rgba(0,0,0,.5);background:#fff;transition:transform .2s}
+.pinshot:not(.static):hover .shotwrap img{transform:translateY(-3px)}
+.shotwrap .lbl{position:absolute;left:8px;top:10px;font-size:12px;font-weight:700;color:#fff;background:rgba(46,26,34,.75);padding:1px 8px;border-radius:999px}
+.tack{position:absolute;top:-9px;left:50%;margin-left:-10px;width:20px;height:20px;border-radius:50%;background:#D8443F;box-shadow:inset -3px -3px 0 rgba(0,0,0,.22),0 3px 4px rgba(0,0,0,.4);z-index:3}
+.notes{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;width:100%;margin-top:-120px}
+.notes:empty{display:none}
+.mini{width:162px;padding:20px 12px 12px;font-size:15px;line-height:1.35;word-wrap:break-word}
+.mini::before{width:56px;height:18px;margin-left:-28px;top:-9px}
+.mini .mh{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(46,26,34,.7);margin-bottom:5px}
+.mini .mh svg{width:18px;height:18px}
+.mini .ms{font-size:12px;color:rgba(46,26,34,.62);margin-top:6px}
+.mini em{color:rgba(46,26,34,.6)}
+.mini.new{animation:drop .65s cubic-bezier(.2,.8,.3,1.3)}
+@keyframes drop{from{transform:translateY(-80px) rotate(16deg) scale(.6);opacity:0}}
+.wrapboard .mini{width:220px;font-size:17px}
+.board .loose{align-self:center}
+
+/* closing + done */
+.closegrid{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;width:100%}
+.closegrid .postit{width:340px;max-width:100%}
+#boards{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+.sendmsg{margin:0;padding:14px 22px;border-radius:14px;font-weight:600;text-align:center;max-width:620px;background:#fff;border:1.5px solid var(--line)}
+.sendmsg.ok{background:#E8F4EE;border-color:#9ACDB4;color:#1D5E40}
+.sendmsg.fail{background:#FDF1E4;border-color:#E9B57E;color:#6E3D08}
+.sendmsg:empty{display:none}
+
+.confetti{position:fixed;width:10px;height:14px;border-radius:2px;pointer-events:none;z-index:50;animation:boom 1s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes boom{0%{transform:translate(-50%,-50%) rotate(0);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--rot));opacity:0}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,140px);background:var(--ink);color:#fff;padding:13px 22px;border-radius:12px;font-weight:600;transition:transform .35s ease;z-index:40;box-shadow:0 10px 24px rgba(0,0,0,.22);max-width:calc(100vw - 32px);text-align:center}
+.toast.show{transform:translate(-50%,0)}
+
+@media (max-width:900px){
+  .phonecol{position:static}
+  .bigphone{height:min(calc(100vh - 240px),600px);min-height:380px}
+}
+@media (max-width:700px){
+  body{font-size:17px}
+  h1{font-size:34px}
+  .feelings{grid-template-columns:repeat(3,1fr)}
+  .arrow{width:44px;height:44px}
+  .bar{padding:12px 18px}
+}
+@media (prefers-reduced-motion:reduce){
+  .postit,.feel,.shotwrap img,.toast{transition:none}
+  .mini.new,.scene.ready{animation:none}
+  .cube{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="brand">Stick &amp; Tell</div>
+  <div class="crumbs" id="crumbs"></div>
+</div>
+
+<main>
+  <section class="view on" id="start">
+    <h1>Two apps, seven feelings</h1>
+    <p class="lead">You will look at screens from two menopause apps, one screen at a time. For each screen, drag the symbol that best matches how it makes you feel onto the screen. A question will appear, and you can write as much or as little as you like. At the end of each app, you can roll a die for a surprise wild card 🎲.</p>
+    <p class="reassure">There are no right or wrong answers, and <b>nothing is required</b>. You can skip any question, or any screen. Your honest feelings are what matter. 💬</p>
+    <div class="legend" id="legend" aria-label="The seven symbols"></div>
+    <div class="postit namenote"><label for="pname">Your name or a nickname</label><input class="hand" id="pname" autocomplete="off" placeholder="e.g. Ayşe or P07"></div>
+    <p class="small">Which app would you like to start with?</p>
+    <div class="order">
+      <button type="button" data-first="0"><strong id="o0"></strong><span id="o0s"></span></button>
+      <button type="button" data-first="1"><strong id="o1"></strong><span id="o1s"></span></button>
+    </div>
+  </section>
+
+  <section class="view" id="screens">
+    <div class="tourhead">
+      <h2><span class="dot"></span><span class="appnm"></span></h2>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="screenwrap">
+      <div class="phonecol">
+        <div class="phonebox">
+          <button class="arrow" id="tprev" type="button" aria-label="Previous screen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <div class="bigphone" id="phone"><div class="screenbox" id="screenbox"><img id="timg" alt=""><div class="stickers" id="stickers"></div><div class="dropzone" aria-hidden="true">Drop it here</div></div></div>
+          <button class="arrow" id="tnext" type="button" aria-label="Next screen"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        </div>
+        <div class="pips" id="pips"></div>
+      </div>
+      <div class="panel">
+        <h3>How does this screen make you feel?</h3>
+        <p class="draghint" id="draghint">✋ Drag a symbol onto the screen to stick your feeling on it. You can also just tap it.</p>
+        <div class="chosen" id="chosen" hidden></div>
+        <div class="feelings" id="feelings" role="group" aria-label="Pick a feeling"></div>
+        <div class="work" id="work"></div>
+        <div class="navrow">
+          <button class="ghost" id="clearFeel" type="button" hidden>Remove my choice</button>
+          <span class="hint" id="navhint">Everything is optional. You can just move on.</span>
+          <button class="primary" id="nextBtn" type="button"></button>
+        </div>
+      </div>
+    </div>
+    <h3 class="boardtitle">📌 Your board for <span class="appnm"></span></h3>
+    <p class="boardhint">Your notes stick to the screens. Tap a screen to go back to it.</p>
+    <div class="board" id="board"></div>
+  </section>
+
+  <section class="view" id="wild">
+    <div class="tourhead">
+      <h2><span class="dot"></span><span><span class="appnm"></span>: wild card 🎲</span></h2>
+      <span class="count" id="wildcount"></span>
+    </div>
+    <p class="lead">Before we move on: roll the die for a surprise question about <b class="appnm"></b>. Answer it, roll again, or simply skip. It’s all up to you.</p>
+    <div class="dieblock" id="dieblock">
+      <button class="scene" id="scene" type="button" aria-label="Roll the die"><div class="cube" id="cube"></div></button>
+      <button class="primary rollbtn" id="roll" type="button">Roll the die 🎲</button>
+    </div>
+    <div class="wildcard" id="wildcard" aria-live="polite"></div>
+    <div class="wildlist" id="wildlist"></div>
+    <div class="navbar">
+      <button class="secondary" id="wildBack" type="button">← Back to the screens</button>
+      <button class="primary" id="wildNext" type="button"></button>
+    </div>
+  </section>
+
+  <section class="view" id="closing">
+    <h1>Almost done! ✨</h1>
+    <p class="lead">A few last questions, all optional.</p>
+    <div class="closegrid">
+      <div class="postit" style="--pc:#C4EDE6;--r:-2.5deg"><label for="c1">Which of the two apps felt more like it was made for you? Why?</label><textarea class="hand" id="c1" rows="5" placeholder="Optional"></textarea></div>
+      <div class="postit" style="--pc:#FFE27A;--r:1.5deg"><label for="c2">Thinking about this time in your life: what helps you feel like yourself?</label><textarea class="hand" id="c2" rows="5" placeholder="Optional"></textarea></div>
+      <div class="postit" style="--pc:#DCD3FF;--r:-1deg"><label for="c3">💌 Write a short postcard to a friend who is just starting menopause. What would you tell her about apps like these, and about this time of life?</label><textarea class="hand" id="c3" rows="5" placeholder="Dear …"></textarea></div>
+      <div class="postit" style="--pc:#FFC9D6;--r:2deg"><label for="c4">Is there anything else you’d like to share about these apps, or about how you feel right now?</label><textarea class="hand" id="c4" rows="5" placeholder="Optional"></textarea></div>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="backScreens" type="button">Back</button>
+      <button class="primary" id="finish" type="button">Finish and send 🎉</button>
+    </div>
+  </section>
+
+  <section class="view" id="done">
+    <h1>Thank you! 🎉</h1>
+    <p class="lead">Thank you for sharing your feelings so openly. Here are your boards.</p>
+    <p class="sendmsg" id="sendmsg" aria-live="polite"></p>
+    <button class="primary" id="resend" type="button" hidden>Try sending again</button>
+    <p class="hint">Want a copy for yourself, or sending didn’t work?</p>
+    <div class="actions">
+      <button class="secondary" id="dl" type="button">Download my answers</button>
+      <button class="secondary" id="copy" type="button">Copy my answers</button>
+    </div>
+    <p class="hint" id="copymsg" aria-live="polite"></p>
+    <div id="boards"></div>
+    <button class="ghost" id="restart" type="button">Start over (clears all answers)</button>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  // ---- settings ----
+  const HIDE_NAMES = false;   // true: participants see "App A" / "App B" instead of the real names
+  const STORE = 'rtt-form-v2';
+  // Google Apps Script web app URL (ends with /exec). Empty = answers are only downloadable.
+  const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbxX7dTusnZGJ1hzY74jDEONOrn14i6R8fFe8_m1BGTdLRsZZzzEBhy6kztWdipUKsYlRg/exec';
+
+  // Native emoji: Apple emoji on iPhone/Mac, the device's own emoji elsewhere.
+  const ICONS = {
+    smile:'<span class="emo">😊</span>',
+    heart:'<span class="emo">❤️</span>',
+    neutral:'<span class="emo">😐</span>',
+    cloud:'<span class="emo">🌧️</span>',
+    bin:'<span class="emo">🗑️</span>',
+    wrench:'<span class="emo">🔧</span>',
+    wand:'<span class="emo">🪄</span>'
+  };
+  // Each symbol has three questions. Each one quietly opens one SDT need (A = autonomy, C = competence, R = relatedness).
+  // Participants never see these letters; they are only written to the results as "sdt_lens".
+  const FACES = [
+    {id:'smile', label:'Smile', hint:'Feels good', group:'Happy', color:'#D99A1E', pc:'#FFE27A', q:[
+      ['A','What about this screen feels good to you? Does it fit the way you like to do things?'],
+      ['C','Does this screen help you make sense of your body or your days? What makes you smile about it?'],
+      ['R','Does this screen make you feel understood, or a little less alone? In what way?']]},
+    {id:'heart', label:'Heart', hint:'Wouldn’t give it up', group:'Happy', color:'#D9486F', pc:'#FFC9D6', q:[
+      ['A','What on this screen would you not want to give up? What does it let you do on your own terms?'],
+      ['C','What here would you keep because it helps you understand what is happening to you?'],
+      ['R','Is there something here you would share with a friend going through menopause? What is it?']]},
+    {id:'neutral', label:'Neutral', hint:'No strong feeling', group:'Neutral', color:'#7A7F8A', pc:'#E9E6DF', q:[
+      ['A','This screen doesn’t stir much for you. What would make it feel more like yours?'],
+      ['C','What would this screen need for it to be actually useful to you?'],
+      ['R','Does anything here feel like it was made for someone else? Who?']]},
+    {id:'cloud', label:'Cloud', hint:'Confusing or tiring', group:'Unhappy', color:'#6E7FA8', pc:'#D3DCF5', q:[
+      ['A','Does anything on this screen make you feel pushed or told what to do? Tell us about it.'],
+      ['C','Where on this screen do you feel lost or unsure what to do?'],
+      ['R','Does anything here make you feel misunderstood, or like the app doesn’t really get you?']]},
+    {id:'bin',   label:'Bin', hint:'Would throw it away', group:'Unhappy', color:'#5C6474', pc:'#DCDFE5', q:[
+      ['A','What on this screen would you throw in the bin? Does any of it feel forced on you?'],
+      ['C','Is there anything here you would never use because it feels like too much work? Why?'],
+      ['R','What here feels out of place, as if it is speaking to someone who isn’t you?']]},
+    {id:'wrench',label:'Wrench', hint:'Would change it', group:'Idea', color:'#23877F', pc:'#C4EDE6', q:[
+      ['A','If this screen were yours to arrange, what would you change?'],
+      ['C','What almost works for you here, but needs a small fix so you could really use it?'],
+      ['R','What would you change so this screen feels like it understands women like you?']]},
+    {id:'wand',  label:'Wand', hint:'Something’s missing', group:'Idea', color:'#6A52E8', pc:'#DCD3FF', q:[
+      ['A','If you had a magic wand, what would you add so this fits your own life and choices?'],
+      ['C','What is missing that would help you feel more confident handling this stage of life?'],
+      ['R','What would you add so you feel more supported, or more connected to others going through the same?']]}
+  ];
+  const FBY = Object.fromEntries(FACES.map(f => [f.id, f]));
+  // Laddering: what it does → how it leaves you feeling (room for choice, capability, closeness) → personal value.
+  const LADDER = {
+    Happy: [
+      'When you use this, what happens for you? How does it change your day?',
+      'How does that leave you feeling: about yourself, about your body, or about the people around you?',
+      'And why does that matter in your life right now? What does it say about what you value most?'
+    ],
+    Unhappy: [
+      'Imagine this in your everyday life. What would happen, and how would it feel?',
+      'Why would that bother you? What would it take away from you?',
+      'What does that tell you about what really matters to you at this stage of your life?'
+    ],
+    Idea: [
+      'If the app had this, what would change for you day to day?',
+      'How would that make you feel: about yourself, or about how you handle this time in your life?',
+      'What would it give you in your life, and why does that matter so much to you?'
+    ],
+    Neutral: [
+      'If this screen did matter to you, what would be different for you?',
+      'How would that leave you feeling about yourself, or about the people around you?',
+      'What does that say about what you need or value right now?'
+    ]
+  };
+  const ladderQ = (fid, j) => LADDER[FBY[fid].group][j];
+  const CLOSING = [
+    'Which of the two apps felt more like it was made for you? Why?',
+    'Thinking about this time in your life: what helps you feel like yourself?',
+    'Postcard to a friend who is just starting menopause: what would you tell her about apps like these, and about this time of life?',
+    'Is there anything else you’d like to share about these apps, or about how you feel right now?'
+  ];
+  const CLOSING_LENS = ['', 'A/C/R', 'R', ''];
+  // Wild card die: the six original symbols, each with two probe tasks (SDT lens hidden from participants).
+  const DIE = ['smile','heart','bin','cloud','wrench','wand'];
+  const WILD = {
+    smile: [['R','If this app were a person in your life, who would it be? A friend, a doctor, a coach, a stranger? Why?'],
+            ['C','Finish the sentence: “With an app like this, I would finally be able to…”']],
+    heart: [['A','Finish the sentence: “An app like this should always let me…”'],
+            ['R','Who would you like to share this app with, and what would you tell them?']],
+    bin:   [['A','Write one rule this app must never break with you.'],
+            ['R','What would make you stop trusting this app?']],
+    cloud: [['C','Think of a recent moment when you didn’t understand what your body was doing. Could this app have helped? How?'],
+            ['A','When does an app like this start to feel like it is controlling you, rather than helping you?']],
+    wrench:[['C','You are the designer now. Describe in words the one screen you would build for yourself.'],
+            ['A','What would you want to switch off, hide, or decide for yourself in this app?']],
+    wand:  [['R','Write a short message this app could send you on a hard day.'],
+            ['C','If this app could teach you one thing about yourself, what would you want it to be?']]
+  };
+  const SIDES = ['front','right','back','left','top','bottom'];
+  const ROT = {front:[0,0], right:[0,-90], back:[0,180], left:[0,90], top:[-90,0], bottom:[90,0]};
+  const APPS = [
+    {name:'Clue', alias:'App A', color:'#E2574C', shots:[1,2,3,4,5,6,7,8,9].map(n => 'shots/clue-' + n + '.jpg')},
+    {name:'Midrise', alias:'App B', color:'#3E8E9E', shots:['1-community','2-symptoms','7-period-calendar','8-period-log','9-activities','3-exercises','4-affirmation','5-gratitude','6-goal'].map(n => 'shots/midrise-' + n + '.jpg')}
+  ];
+
+  const blank = () => ({participant:'', started:'', finished:'', order:[0,1], step:0, phase:'start', idx:0,
+    data:[{screens:[], wild:[]},{screens:[], wild:[]}], closing:['','','',''], lastWild:'', lastQ:{}, fresh:null,
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,7), sent:false});
+  let S = blank();
+  try{
+    const saved = JSON.parse(localStorage.getItem(STORE) || 'null');
+    if (saved && saved.data && saved.phase){ S = Object.assign(blank(), saved); while (S.closing.length < 4) S.closing.push(''); S.data.forEach(d => { d.wild = d.wild || []; }); }
+  }catch(e){}
+  function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+  let saveT; const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(save, 300); };
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const trunc = (s,n) => { s = String(s||'').trim(); return s.length > n ? s.slice(0,n-1).trimEnd() + '…' : s; };
+  const nm = a => HIDE_NAMES ? a.alias : a.name;
+  const ai = () => S.order[S.step];
+  const app = () => APPS[ai()];
+  const rec = () => S.data[ai()].screens[S.idx] || null;
+  const reduce = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tilt = i => ['-3.5deg','2.8deg','-2deg','3.6deg','-4deg','2.2deg','-1.5deg'][i % 7];
+  const tiltS = i => ['-1.5deg','1.2deg','-.6deg','1.8deg','-1.2deg','.8deg'][i % 6];
+
+  // ---- static bits ----
+  FACES.forEach(f => {
+    const l = document.createElement('div'); l.className = 'leg';
+    l.innerHTML = '<span style="color:' + f.color + ';display:flex">' + ICONS[f.id] + '</span><div><b>' + f.label + '</b><span>' + f.hint + '</span></div>';
+    $('legend').appendChild(l);
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'feel'; b.dataset.face = f.id;
+    b.style.setProperty('--fc', f.color); b.style.setProperty('--fpc', f.pc);
+    b.setAttribute('aria-pressed','false');
+    b.innerHTML = '<span style="color:' + f.color + ';display:flex">' + ICONS[f.id] + '</span><b>' + f.label + '</b><span>' + f.hint + '</span>';
+    b.addEventListener('pointerdown', e => startDrag(e, f.id, b));
+    b.addEventListener('click', e => { if (e.detail === 0) pickFace(f.id, b, null); });   // keyboard
+    $('feelings').appendChild(b);
+  });
+  DIE.forEach((fid,i) => {
+    const f = FBY[fid], d = document.createElement('div');
+    d.className = 'face f-' + SIDES[i]; d.style.color = f.color;
+    d.innerHTML = ICONS[f.id] + '<span>' + f.label + '</span>';
+    $('cube').appendChild(d);
+  });
+  APPS.forEach(a => a.shots.forEach(s => { const i = new Image(); i.src = s; }));
+  $('o0').textContent = 'Start with ' + nm(APPS[0]); $('o0s').textContent = 'Then ' + nm(APPS[1]);
+  $('o1').textContent = 'Start with ' + nm(APPS[1]); $('o1s').textContent = 'Then ' + nm(APPS[0]);
+
+  function toast(msg){
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  function confettiAt(el, color){
+    if (reduce()) return;
+    const r = el.getBoundingClientRect(), x = r.left + r.width/2, y = r.top + r.height/2;
+    const cols = [color, '#FFD23F', '#FF6B8B', '#9E2A4B', '#2BB673', '#6A52E8'];
+    for (let i = 0; i < 30; i++){
+      const s = document.createElement('i'); s.className = 'confetti';
+      s.style.left = x + 'px'; s.style.top = y + 'px';
+      const ang = Math.random()*Math.PI*2, dist = 60 + Math.random()*120;
+      s.style.setProperty('--dx', (Math.cos(ang)*dist).toFixed(0) + 'px');
+      s.style.setProperty('--dy', (Math.sin(ang)*dist - 30).toFixed(0) + 'px');
+      s.style.setProperty('--rot', (Math.random()*720-360).toFixed(0) + 'deg');
+      s.style.background = cols[i % cols.length];
+      document.body.appendChild(s); setTimeout(() => s.remove(), 1100);
+    }
+  }
+
+  function show(view){
+    S.phase = view; save();
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === view));
+    render(); window.scrollTo(0,0);
+  }
+  function renderCrumbs(){
+    const c = $('crumbs'); c.innerHTML = '';
+    const end = S.phase === 'closing' || S.phase === 'done';
+    const items = S.order.map((a,si) => ({t: nm(APPS[a]), on: (S.phase==='screens' || S.phase==='wild') && S.step===si, done: S.step>si || end}));
+    items.push({t:'Wrap-up', on: S.phase==='closing', done: S.phase==='done'});
+    items.forEach(it => {
+      const s = document.createElement('span');
+      s.className = 'crumb' + (it.on ? ' on' : it.done ? ' done' : '');
+      s.textContent = it.t; c.appendChild(s);
+    });
+  }
+  function render(){
+    renderCrumbs();
+    if (S.phase === 'start'){ $('pname').value = S.participant; return; }
+    if (S.phase === 'screens') renderScreen();
+    if (S.phase === 'wild') renderWild();
+    if (S.phase === 'closing'){ ['c1','c2','c3','c4'].forEach((id,i) => $(id).value = S.closing[i]); }
+    if (S.phase === 'done') renderDone();
+  }
+
+  // ---- one screen ----
+  function renderScreen(){
+    const a = app(), d = S.data[ai()], r = rec(), last = a.shots.length - 1;
+    document.documentElement.style.setProperty('--c', HIDE_NAMES ? '#8A90A0' : a.color);
+    document.querySelectorAll('.appnm').forEach(e => e.textContent = nm(a));
+    $('timg').src = a.shots[S.idx]; $('timg').alt = nm(a) + ' screen ' + (S.idx+1);
+    $('count').textContent = 'Screen ' + (S.idx+1) + ' of ' + a.shots.length;
+    $('tprev').disabled = S.idx === 0 && S.step === 0;
+    $('tnext').disabled = false;
+    $('pips').innerHTML = a.shots.map((_,i) => '<button type="button" aria-label="Go to screen ' + (i+1) + '" class="' + (d.screens[i] ? 'on' : '') + (i === S.idx ? ' cur' : '') + '" data-i="' + i + '"></button>').join('');
+    $('pips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.i)));
+    document.querySelectorAll('.feel').forEach(b => b.setAttribute('aria-pressed', String(!!r && r.face === b.dataset.face)));
+    const collapsed = !!r && !pickerOpen;
+    $('feelings').hidden = collapsed; $('draghint').hidden = collapsed;
+    $('chosen').hidden = !collapsed;
+    if (collapsed){
+      const f = FBY[r.face];
+      $('chosen').style.setProperty('--fc', f.color);
+      $('chosen').innerHTML = ICONS[f.id] + '<div><small>You picked</small><b>' + f.label + ' · ' + f.hint + '</b></div><button class="secondary" type="button" id="changeFeel">Change</button>';
+      $('changeFeel').addEventListener('click', () => { pickerOpen = true; renderScreen(); });
+    }
+    $('clearFeel').hidden = !r;
+    $('nextBtn').textContent = S.idx < last ? 'Next screen →' : 'On to the wild card 🎲 →';
+    $('navhint').textContent = r ? '' : 'Everything is optional. You can just move on.';
+    renderStickers();
+    renderWork();
+    renderBoard();
+  }
+
+  function lastWords(r, k){
+    const list = [r.answer].concat(r.ladder.slice(0, k-1));
+    for (let i = list.length-1; i >= 0; i--) if ((list[i]||'').trim()) return list[i];
+    return '';
+  }
+  function renderWork(){
+    const w = $('work'), r = rec();
+    if (!r){ w.innerHTML = ''; return; }
+    const f = FBY[r.face];
+    let html = '<div class="postit" style="--pc:' + f.pc + ';--r:-1.8deg"><label for="ans0">' + esc(r.q) + '</label>' +
+      '<textarea class="hand" id="ans0" data-k="0" rows="3" placeholder="Optional: a word, a sentence, or as much as you like"></textarea></div>';
+    for (let k = 1; k <= r.stage; k++){
+      const prev = lastWords(r, k);
+      html += '<div class="postit" style="--pc:' + f.pc + ';--r:' + (k % 2 ? '1.8deg' : '-1.4deg') + '">' +
+        (prev ? '<p class="youwrote">You wrote: “' + esc(trunc(prev, 140)) + '”</p>' : '') +
+        '<label for="ans' + k + '">' + esc(ladderQ(r.face, k-1)) + '</label>' +
+        '<textarea class="hand" id="ans' + k + '" data-k="' + k + '" rows="3" placeholder="Optional"></textarea></div>';
+    }
+    if (r.stage < 3){
+      html += '<div class="deeper"><button class="secondary" id="goDeeper" type="button">🪜 ' + (r.stage === 0 ? 'Go a little deeper' : 'One more step deeper') + '</button>' +
+        '<div class="rungs" aria-hidden="true">' + [0,1,2].map(i => '<i class="' + (i < r.stage ? 'on' : '') + '"></i>').join('') + '</div>' +
+        '<span class="hint">Optional</span></div>';
+    } else {
+      html += '<p class="hint">🪜 You went all the way down. Thank you!</p>';
+    }
+    w.innerHTML = html;
+    w.querySelectorAll('textarea').forEach(t => {
+      const k = +t.dataset.k;
+      t.value = k === 0 ? r.answer : (r.ladder[k-1] || '');
+      t.addEventListener('input', () => {
+        const rr = rec(); if (!rr) return;
+        if (k === 0) rr.answer = t.value; else rr.ladder[k-1] = t.value;
+        saveSoon(); boardSoon();
+      });
+    });
+    const gd = $('goDeeper');
+    if (gd) gd.addEventListener('click', () => {
+      const rr = rec(); if (!rr || rr.stage >= 3) return;
+      rr.stage++; save(); renderWork();
+      const t = $('ans' + rr.stage); if (t){ t.focus({preventScroll:true}); t.scrollIntoView({behavior: reduce() ? 'auto' : 'smooth', block:'center'}); }
+    });
+  }
+  function pickQ(f){
+    const last = S.lastQ[f.id]; let k;
+    do { k = Math.floor(Math.random()*f.q.length); } while (f.q.length > 1 && k === last);
+    S.lastQ[f.id] = k; return f.q[k];   // [lens, question]
+  }
+  function pickFace(fid, btn, pos){
+    const d = S.data[ai()], r = rec();
+    const f = FBY[fid];
+    if (r && r.face === fid){ if (pos) r.pos = pos; pickerOpen = false; save(); renderScreen(); return; }
+    const pq = pickQ(f);
+    if (r){ r.face = fid; r.q = pq[1]; r.lens = pq[0]; if (pos) r.pos = pos; }
+    else d.screens[S.idx] = {face:fid, q:pq[1], lens:pq[0], answer:'', ladder:['','',''], stage:0, pos: pos || DEFAULT_POS};
+    S.fresh = ai() + ':' + S.idx;
+    pickerOpen = false;
+    save(); renderScreen(); confettiAt(btn, f.color);
+    const t = $('ans0'); if (t) t.focus({preventScroll:true});
+  }
+  // ---- drag a feeling onto the screen ----
+  let drag = null, pickerOpen = false;
+  const stickerHTML = (fid, pos, small) => { const f = FBY[fid]; return '<span class="sticker" style="left:' + (pos.x*100).toFixed(1) + '%;top:' + (pos.y*100).toFixed(1) + '%;--pc:' + f.pc + ';--fc:' + f.color + '">' + ICONS[f.id] + '</span>'; };
+  const DEFAULT_POS = {x:.8, y:.12};
+  function overPhone(x, y){
+    const r = $('screenbox').getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom ? {x:(x - r.left)/r.width, y:(y - r.top)/r.height} : null;
+  }
+  function startDrag(e, fid, btn){
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch(_){}
+    drag = {fid, btn, x0:e.clientX, y0:e.clientY, moved:false, ghost:null};
+    const move = ev => {
+      if (!drag) return;
+      const dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+      if (!drag.moved && Math.hypot(dx, dy) > 6){
+        drag.moved = true;
+        const f = FBY[fid], g = document.createElement('div');
+        g.className = 'dragghost'; g.style.setProperty('--pc', f.pc); g.style.setProperty('--fc', f.color);
+        g.innerHTML = ICONS[f.id]; document.body.appendChild(g); drag.ghost = g;
+        btn.classList.add('lifting'); $('phone').classList.add('dragging');
+      }
+      if (drag.moved){
+        drag.ghost.style.left = ev.clientX + 'px'; drag.ghost.style.top = ev.clientY + 'px';
+        $('phone').classList.toggle('over', !!overPhone(ev.clientX, ev.clientY));
+      }
+    };
+    const end = ev => {
+      btn.removeEventListener('pointermove', move); btn.removeEventListener('pointerup', end); btn.removeEventListener('pointercancel', end);
+      const d = drag; drag = null;
+      if (!d) return;
+      if (d.ghost) d.ghost.remove();
+      btn.classList.remove('lifting'); $('phone').classList.remove('dragging','over');
+      if (ev.type === 'pointercancel') return;
+      if (!d.moved){ pickFace(fid, btn, null); return; }          // a tap
+      const pos = overPhone(ev.clientX, ev.clientY);
+      if (pos) pickFace(fid, $('phone'), pos);
+      else toast('Drop it on the screen to stick it there ✋');
+    };
+    btn.addEventListener('pointermove', move); btn.addEventListener('pointerup', end); btn.addEventListener('pointercancel', end);
+  }
+  function renderStickers(){
+    const r = rec();
+    $('stickers').innerHTML = r ? stickerHTML(r.face, r.pos || DEFAULT_POS) : '';
+  }
+
+  function goTo(i){ pickerOpen = false; S.idx = i; save(); renderScreen(); window.scrollTo({top:0, behavior: reduce() ? 'auto' : 'smooth'}); }
+  function next(){
+    const last = app().shots.length - 1;
+    if (S.idx < last){ goTo(S.idx + 1); return; }
+    show('wild');
+  }
+  function prev(){
+    if (S.idx > 0){ goTo(S.idx - 1); return; }
+    if (S.step === 1){ S.step = 0; show('wild'); }
+  }
+  function afterWild(){
+    if (S.step === 0){ S.step = 1; S.idx = 0; $('cube').style.transform = ''; show('screens'); toast('On to ' + nm(app()) + '! 🎉'); }
+    else show('closing');
+  }
+
+  // ---- wild card ----
+  let rolling = false, spins = 0;
+  function wildNote(w, i){
+    const f = FBY[w.face];
+    return '<div class="postit mini" style="--pc:' + f.pc + ';--r:' + tilt(i+1) + '"><div class="mh">🎲 <span style="color:' + f.color + ';display:flex">' + ICONS[f.id] + '</span>Wild card</div>' +
+      ((w.answer||'').trim() ? esc(trunc(w.answer, 90)) : '<em>' + esc(trunc(w.q, 70)) + '</em>') + '</div>';
+  }
+  function renderWild(){
+    const a = app(), d = S.data[ai()], list = d.wild, cur = list[list.length-1];
+    document.documentElement.style.setProperty('--c', HIDE_NAMES ? '#8A90A0' : a.color);
+    document.querySelectorAll('.appnm').forEach(e => e.textContent = nm(a));
+    $('wildcount').textContent = list.length ? list.length + ' wild card' + (list.length === 1 ? '' : 's') : 'Optional';
+    $('roll').textContent = list.length ? 'Roll again 🎲' : 'Roll the die 🎲';
+    $('roll').disabled = rolling; $('scene').disabled = rolling;
+    $('scene').classList.toggle('ready', !rolling);
+    $('wildNext').textContent = S.step === 0 ? (list.length ? 'On to ' : 'Skip, on to ') + nm(APPS[S.order[1]]) + ' →' : (list.length ? 'On to the wrap-up →' : 'Skip, on to the wrap-up →');
+    if (cur && !$('cube').style.transform){ const [tx,ty] = ROT[SIDES[DIE.indexOf(cur.face)]]; $('cube').style.transform = 'rotateX(' + tx + 'deg) rotateY(' + ty + 'deg)'; }
+    const wc = $('wildcard');
+    if (!cur || rolling){ wc.innerHTML = ''; }
+    else {
+      const f = FBY[cur.face];
+      wc.innerHTML = '<div class="postit wildq" style="--pc:' + f.pc + '"><span class="kind"><span style="color:' + f.color + ';display:flex">' + ICONS[f.id] + '</span>' + f.label + ' · wild card</span>' +
+        '<label for="wans">' + esc(cur.q) + '</label><textarea class="hand" id="wans" rows="4" placeholder="Optional: write, list, or describe. Anything goes."></textarea></div>';
+      $('wans').value = cur.answer || '';
+      $('wans').addEventListener('input', e => { const l = S.data[ai()].wild; l[l.length-1].answer = e.target.value; saveSoon(); });
+    }
+    $('wildlist').innerHTML = list.slice(0, -1).map(wildNote).reverse().join('');
+  }
+  function roll(){
+    if (rolling) return;
+    const d = S.data[ai()];
+    let i; do { i = Math.floor(Math.random()*DIE.length); } while (DIE[i] === S.lastWild);
+    S.lastWild = DIE[i];
+    const fid = DIE[i];
+    const used = new Set(S.data.flatMap(x => x.wild.map(w => w.q)));
+    const opts = WILD[fid].filter(o => !used.has(o[1]));
+    const pick = (opts.length ? opts : WILD[fid])[Math.floor(Math.random()*(opts.length || WILD[fid].length))];
+    const [tx,ty] = ROT[SIDES[i]];
+    spins += 2;
+    $('cube').style.transform = 'rotateX(' + (tx + 360*spins) + 'deg) rotateY(' + (ty + 360*(spins+1)) + 'deg)';
+    rolling = true; renderWild();
+    setTimeout(() => {
+      rolling = false;
+      d.wild.push({face:fid, q:pick[1], lens:pick[0], answer:''});
+      save(); renderWild(); confettiAt($('scene'), FBY[fid].color);
+      const t = $('wans'); if (t) t.focus({preventScroll:true});
+    }, reduce() ? 0 : 1100);
+  }
+
+  // ---- board ----
+  function noteHTML(r, i, fresh){
+    const f = FBY[r.face];
+    const deeper = r.ladder.filter(x => (x||'').trim()).length;
+    const text = (r.answer||'').trim() ? esc(trunc(r.answer, 80)) : '<em>Just the feeling</em>';
+    return '<div class="postit mini' + (fresh ? ' new' : '') + '" style="--pc:' + f.pc + ';--r:' + tilt(i) + '">' +
+      '<div class="mh"><span style="color:' + f.color + ';display:flex">' + ICONS[f.id] + '</span>' + f.label + '</div>' + text +
+      (deeper ? '<div class="ms">🪜 ' + deeper + '/3 deeper</div>' : '') + '</div>';
+  }
+  function boardHTML(appIndex, clickable){
+    const a = APPS[appIndex], d = S.data[appIndex];
+    return a.shots.map((src,i) => {
+      const r = d.screens[i];
+      const fresh = S.fresh === appIndex + ':' + i;
+      const tag = clickable ? 'button' : 'div';
+      return '<' + tag + (clickable ? ' type="button" data-i="' + i + '" aria-label="Go to screen ' + (i+1) + '"' : '') +
+        ' class="pinshot' + (clickable ? '' : ' static') + (clickable && i === S.idx ? ' cur' : '') + '" style="--r:' + tiltS(i) + '"><span class="tack"></span>' +
+        '<span class="shotwrap"><img src="' + src + '" alt="' + esc(nm(a)) + ' screen ' + (i+1) + '"><span class="lbl">' + (i+1) + '</span>' + (r ? stickerHTML(r.face, r.pos || DEFAULT_POS) : '') + '</span>' +
+        '<span class="notes">' + (r ? noteHTML(r, i, fresh) : '') + '</span></' + tag + '>';
+    }).join('');
+  }
+  function renderBoard(){
+    $('board').innerHTML = boardHTML(ai(), true);
+    $('board').querySelectorAll('.pinshot').forEach(b => b.addEventListener('click', () => goTo(+b.dataset.i)));
+    S.fresh = null;
+  }
+  let boardT; const boardSoon = () => { clearTimeout(boardT); boardT = setTimeout(renderBoard, 400); };
+
+  // ---- done ----
+  function renderDone(){
+    let html = '';
+    S.order.forEach(a => { html += '<h3 class="boardtitle">' + esc(nm(APPS[a])) + '</h3><div class="board">' + boardHTML(a, false) + S.data[a].wild.map((w,i) => '<div class="loose">' + wildNote(w,i) + '</div>').join('') + '</div>'; });
+    const cl = S.closing.map((t,i) => (t||'').trim() ? '<div class="postit mini" style="--pc:' + ['#C4EDE6','#FFE27A','#DCD3FF','#FFC9D6'][i] + ';--r:' + tilt(i) + '"><div class="mh">' + ['⚖️ Which app','🌱 Feeling like myself','💌 Postcard','💭 Anything else'][i] + '</div>' + esc(trunc(t,160)) + '</div>' : '').join('');
+    if (cl) html += '<h3 class="boardtitle">Wrap-up</h3><div class="board wrapboard">' + cl + '</div>';
+    $('boards').innerHTML = html;
+    if (S.sent) sendStatus('ok'); else if (!SUBMIT_URL) sendStatus('none'); else if (!$('sendmsg').textContent) sendStatus('fail');
+  }
+
+  // ---- export + sending ----
+  const screenName = (a,i) => 'Screen ' + (i+1) + ' (' + a.shots[i].split('/').pop().replace('.jpg','') + ')';
+  const HEAD = ['submission_id','participant','started','finished','app','type','screen_no','symbol','group','question','screen','answer','ladder_1','ladder_2','ladder_3','sdt_lens','sticker_x','sticker_y'];
+  function toRows(){
+    const rows = [];
+    const base = [S.id, S.participant, S.started, S.finished];
+    S.order.forEach(x => {
+      const a = APPS[x], d = S.data[x];
+      a.shots.forEach((_,i) => {
+        const r = d.screens[i]; if (!r) return;
+        const f = FBY[r.face];
+        rows.push(base.concat([a.name,'screen',i+1,f.label,f.group,r.q,screenName(a,i),r.answer||'']).concat(r.ladder.map((t,j) => j < r.stage ? (t||'') : ''), [r.lens||'', Math.round((r.pos||DEFAULT_POS).x*100), Math.round((r.pos||DEFAULT_POS).y*100)]));
+      });
+    });
+    S.order.forEach(x => S.data[x].wild.forEach((w,n) => { const f = FBY[w.face]; rows.push(base.concat([APPS[x].name,'wild_card',n+1,f.label,f.group,w.q,'',w.answer||'','','','',w.lens,'',''])); }));
+    CLOSING.forEach((q,i) => rows.push(base.concat(['','closing','','','',q,'',S.closing[i]||'','','','',CLOSING_LENS[i],'',''])));
+    return rows;
+  }
+  function toCSV(){
+    const cell = v => { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; };
+    return '﻿' + [HEAD].concat(toRows()).map(r => r.map(cell).join(',')).join('\r\n');
+  }
+  function toText(){
+    const L = ['Stick & Tell answers', 'Participant: ' + (S.participant || '-'), 'Started: ' + S.started, ''];
+    S.order.forEach(x => {
+      const a = APPS[x], d = S.data[x];
+      L.push('=== ' + a.name + ' ===');
+      a.shots.forEach((_,i) => {
+        const r = d.screens[i]; if (!r) return;
+        const f = FBY[r.face];
+        L.push('', screenName(a,i) + ' · ' + f.label + ' (' + f.group + ')', 'Q: ' + r.q, 'A: ' + (r.answer || '-'));
+        for (let j = 0; j < r.stage; j++) L.push('  Deeper ' + (j+1) + ' – ' + ladderQ(r.face, j), '  ' + (r.ladder[j] || '-'));
+      });
+      d.wild.forEach((w,n) => L.push('', '🎲 Wild card ' + (n+1) + ' · ' + FBY[w.face].label, 'Q: ' + w.q, 'A: ' + (w.answer || '-')));
+      L.push('');
+    });
+    L.push('=== Wrap-up ===');
+    CLOSING.forEach((q,i) => L.push('Q: ' + q, 'A: ' + (S.closing[i] || '-')));
+    return L.join('\n');
+  }
+  function download(){
+    const name = 'stick-and-tell_' + ((S.participant || 'participant').replace(/[^\w\-]+/g,'_')) + '_' + new Date().toISOString().slice(0,10) + '.csv';
+    const blob = new Blob([toCSV()], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    $('copymsg').textContent = 'Saved as ' + name + '.';
+  }
+  async function copyAll(){
+    const text = toText();
+    try { await navigator.clipboard.writeText(text); }
+    catch(e){
+      const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch(_){}
+      t.remove();
+    }
+    $('copymsg').textContent = 'Copied! You can paste your answers into an email to the researcher.';
+  }
+  function sendStatus(st){
+    const el = $('sendmsg');
+    $('resend').hidden = st !== 'fail';
+    el.className = 'sendmsg ' + st;
+    el.textContent = {
+      sending: 'Sending your answers to the researcher…',
+      ok: '✓ Your answers have been sent to the researcher. You can close this page.',
+      fail: 'We couldn’t send your answers automatically. Please try again, or download the file and send it to the researcher.',
+      none: 'Please download your answers and send the file to the researcher.'
+    }[st];
+  }
+  async function submit(){
+    if (!SUBMIT_URL){ sendStatus('none'); return; }
+    sendStatus('sending');
+    const body = JSON.stringify({id:S.id, header:HEAD, rows:toRows()});
+    const opts = {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:body};
+    try {
+      const r = await fetch(SUBMIT_URL, opts);
+      const j = await r.json();
+      if (!j.ok) throw new Error('not ok');
+    } catch(e){
+      // Some browsers block reading the reply; send once more without reading it (the sheet ignores duplicates).
+      try { await fetch(SUBMIT_URL, Object.assign({mode:'no-cors'}, opts)); }
+      catch(e2){ S.sent = false; save(); sendStatus('fail'); return; }
+    }
+    S.sent = true; save(); sendStatus('ok');
+  }
+
+  // ---- wiring ----
+  $('pname').addEventListener('input', e => { S.participant = e.target.value; saveSoon(); });
+  document.querySelectorAll('[data-first]').forEach(b => b.addEventListener('click', () => {
+    const f = +b.dataset.first;
+    S.order = [f, 1-f]; S.step = 0; S.idx = 0; S.participant = $('pname').value.trim();
+    if (!S.started) S.started = new Date().toISOString();
+    show('screens');
+  }));
+  $('tprev').addEventListener('click', prev);
+  $('tnext').addEventListener('click', next);
+  $('nextBtn').addEventListener('click', next);
+  $('scene').addEventListener('click', roll);
+  $('roll').addEventListener('click', roll);
+  $('wildNext').addEventListener('click', afterWild);
+  $('wildBack').addEventListener('click', () => { S.idx = app().shots.length - 1; show('screens'); });
+  $('clearFeel').addEventListener('click', () => { S.data[ai()].screens[S.idx] = null; save(); renderScreen(); });
+  $('c1').addEventListener('input', e => { S.closing[0] = e.target.value; saveSoon(); });
+  $('c2').addEventListener('input', e => { S.closing[1] = e.target.value; saveSoon(); });
+  $('c3').addEventListener('input', e => { S.closing[2] = e.target.value; saveSoon(); });
+  $('c4').addEventListener('input', e => { S.closing[3] = e.target.value; saveSoon(); });
+  $('backScreens').addEventListener('click', () => { S.step = 1; show('wild'); });
+  $('finish').addEventListener('click', () => { S.finished = new Date().toISOString(); S.sent = false; $('sendmsg').textContent = ''; show('done'); submit(); });
+  $('resend').addEventListener('click', submit);
+  $('dl').addEventListener('click', download);
+  $('copy').addEventListener('click', copyAll);
+  let armed = false;
+  $('restart').addEventListener('click', () => {
+    if (!armed){ armed = true; $('restart').textContent = 'Click again to clear everything'; setTimeout(() => { armed = false; $('restart').textContent = 'Start over (clears all answers)'; }, 4000); return; }
+    armed = false; S = blank(); try{ localStorage.removeItem(STORE); }catch(e){}
+    $('restart').textContent = 'Start over (clears all answers)'; $('sendmsg').textContent = '';
+    show('start');
+  });
+  document.addEventListener('keydown', ev => {
+    if (/^(TEXTAREA|INPUT)$/.test(ev.target.tagName) || S.phase !== 'screens') return;
+    if (ev.key === 'ArrowLeft') prev();
+    if (ev.key === 'ArrowRight') next();
+  });
+
+  // resume where the participant left off
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === S.phase));
+  render();
+})();
+</script>
+</body>
+</html>
